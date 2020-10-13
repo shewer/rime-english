@@ -39,16 +39,17 @@ local function lua_init()
 		if not  english_mode(env)  then return k.Noop end  
 		--log.info("---processor in  normorl )" ) 
 		--log.info("---processor in inclish_mode   )" ) 
+
 		local keychar= (keycode >=0x20 and keycode <0x80 and string.char(keycode) ) or ""
 		if context:is_composing() and keychar == " " then
 			local cand= context:get_selected_candidate()
-			context.input= cand.text .. " " 
-			--context:push_input(" ") 
+			if cand  then context.input= cand.text  end 
+			context:push_input(" ") 
 			context:commit() 
 			context:clear()
 			return k.Accepted
 		end 
-		if not  keychar:match([[^[a-zA-Z._-?*]$]]) then  return k.Noop end 
+		if not  keychar:match([[^[a-zA-Z._?*-]$]]) then  return k.Noop end 
 
 		log.info("---processor in inclish_mode:" .. context.input ..    "  ascii(" .. keychar .. ")" ) 
 		context:push_input(keychar)
@@ -122,7 +123,7 @@ local function lua_init()
 				--if  context:get_option("english")   then 
 				local str= input:sub(seg.start,seg.start + seg.length) 
 
-				str:find_words():each( 
+				str:find_words( 
 				function(elm) 
 					--log.info("--- in tran yield loop -elm:" .. elm )
 					local cand =Candidate("english", seg.start,seg._end, elm, "[english]")
@@ -167,18 +168,14 @@ local function lua_init()
 	end 
 
 	local function filter_init_func(env) -- non return 
-		--env.dict= dict_info
 		env.connection= env.engine.context.commit_notifier:connect(
-		function(context)  local cand=env.cand
-		log.info( string.format(" ---notify %s %s %s %s " , cand.type,cand.text,cand.start,cand._end) )
-		log.info( "---commit notifier :--" ..  context:get_commit_text() .. "--input:--" .. context.input .. "--"  )
-		if english_mode(env) then 
-			log.info( "---commit notifier :--" ..  context:get_commit_text() .. "--input:--" .. context.input .. "--"  )
-			
-			--context:push_input("  ") 
-		end 
-		end 
-		)
+			function(context)  local cand=env.cand
+				log.info( string.format(" ---notify %s %s %s %s " , cand.type,cand.text,cand.start,cand._end) )
+				log.info( "---commit notifier :--" ..  context:get_commit_text() .. "--input:--" .. context.input .. "--"  )
+				if english_mode(env) then 
+					log.info( "---commit notifier :--" ..  context:get_commit_text() .. "--input:--" .. context.input .. "--"  )
+				end 
+			end )
 	end 
 	local function filter_fini_func(env)  -- non return 
 		env.connection:disconnect() 
@@ -190,10 +187,10 @@ local function lua_init()
 
 
 	return { 
-		processor= { func=processor_func, init=processor_init_func, fini=nil } , 
-		segmentor= { func= segmentor_func, init=segmentor_init_func , fini=nil} , 
-		translator={ func=translator_func, init=translator_init_func,fini=nil } , 
-		filter=    { func=filter_func, init=filter_init_func,    fini=nil } ,   
+		processor= { func=processor_func, init=processor_init_func, fini=processor_fini_func} , 
+		segmentor= { func= segmentor_func, init=segmentor_init_func , fini=segmentor_fini_func} , 
+		translator={ func=translator_func, init=translator_init_func,fini=translator_fini_func} , 
+		filter=    { func=filter_func, init=filter_init_func,    fini=filter_fini_func } ,   
 	}
 
 end 

@@ -18,7 +18,7 @@ local function wildfmt(str)  --    replace ?* to pattern    ? => [%a._]?   *=> [
 		local change
 		str,change= str:gsub("([?*])","[%%a._]%1")
 		if change > 0 then 
-			str=   str .. "$"
+			--str=   str .. "$"
 		end 
 		return "^" .. str:lower()
 end 
@@ -67,7 +67,7 @@ local function dict_match(tab, str,func)
 	str=wildfmt(str) 
 	tab = tab:find_all( function(elm) 
 		local match_str= elm:lower():match( str ) 
-		if type(func) == "function"  and match_str  then func( matcher_str ) end 
+		if type(func) == "function"  and match_str  then func( elm ) end 
 		return  match_str 
 		end )
 
