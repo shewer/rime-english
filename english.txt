@@ -1,25 +1,3 @@
-# Rime dictionary: english	
-# encoding: utf-8	
-#	
-# Rime English	
-# Dicky Cheng <onkey@hotmail.com>	
-#	
-# Original dictionary author	
-# skywind3000 <https://github.com/skywind3000/ECDICT>	
-	
----	
-name: english	
-version: "0.1"	
-columns:	
-  - code	
-  - text	
-use_preset_vocabulary: false	
-used_punct: "-.'"	# PowerQuery Parameter, same as in <english.schema.yaml>
-wildcard: "`~"	# PowerQuery Parameter, same as in <english.schema.yaml>
-chinese_comment: true	# PowerQuery Parameter, use Chinese translation or English definition
-phonetic: true	# PowerQuery Parameter, insert phonetic symbol before comment
-...	
-	
 #code	text
 a	[ei] 第一个字母 A; 一个; 第一的\r\nart. [计] 累加器, 加法器, 地址, 振幅, 模拟, 区域, 面积, 汇编, 组件, 异步
 A-road	['ei'rәjd] <英>A级公路,主车道
