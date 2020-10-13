@@ -6,8 +6,12 @@
 -- Distributed under terms of the MIT license.
 --
 
+-- windows  path setup 
+USERDIR= ( USERDIR or  os.getenv("APPDATA") or "" ) .. [[\Rime]]
+
 --require "english/english_init"
 --string.find_word,string.word_info= require("english/english_dict")() 
+
 require('english.english_init')
 -- init  dictionary  function to string table 
 string.find_words,string.word_info= require('english.english_dict')() -- (USERDIR .. "\\" .. [[lua\english\english.txt]] )
