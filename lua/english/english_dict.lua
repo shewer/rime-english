@@ -56,36 +56,38 @@ local function init_dict(filename )
 
 end 
 
-local function dict_match(tab, str,step)
+local function dict_match(tab, str,func)
 	tab=tab[str:sub(1,1):lower()]  or setmetatable({} , {__index=table} ) 
 	if #tab==0  then 
 		log.info(
 		      string.format( "tabsize=0 :string = (%s), sub=(%s) ", str , str:sub(1,1) )
 		)
 	end 
-	if step then 
-		for i=1,#str do 
-			local substr= str:sub(1,i) 
-			tab=tab:find_all( match( substr ) )
-		end 
-	else 
 		--tab = tab:find_all(match( str) )
-		str=wildfmt(str) 
-		tab = tab:find_all( function(elm) 
-			return   elm:lower():match( str ) 
-			end )
+	str=wildfmt(str) 
+	tab = tab:find_all( function(elm) 
+		local match_str= elm:lower():match( str ) 
+		if type(func) == "function"  and match_str  then func( matcher_str ) end 
+		return  match_str 
+		end )
 
-    end 
+   
 	return tab  or setmetatable( {} , {__index=table })
 end 
+local function dict_match_call(tab,str , func)
+	tab=tab[str:sub(1,1):lower()]  or setmetatable({} , {__index=table} ) 
 
+	str=wildfmt(str)
+	tab:each( func)
+end 	      
+	    
 
 local function init(filename)
 
 	local dict_index,dict_info = init_dict(filename) 
 
-	local function words(str) 
-		return dict_match(dict_index,str)
+	local function words(str,func) 
+		return dict_match(dict_index,str, func)
 	end 
 	local function info(str)
 		return dict_info[str]
