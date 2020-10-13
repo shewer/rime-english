@@ -108,7 +108,7 @@ local function lua_init()
 		if english_mode(env) and seg:has_tag("english")  then 
 			log.info("-----entry lua_tranlator : english   input:(" .. input ..")" )
 			local flag=true 
-			context.input:find_words( 
+			input:find_words( 
 			function(elm) 
 				log.info("--- in tran yield loop -elm:" .. elm )
 				if flag and context.input ~= elm then 
