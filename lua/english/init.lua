@@ -25,7 +25,7 @@ local function english_mode(env)
 
 end 
 
-local function lua_init()
+local function lua_init(argv)
 
 	local function processor_func(key,env) -- key:KeyEvent,env_
 		local k = {Rejected = 0, Accepted = 1, Noop = 2 }
@@ -75,21 +75,21 @@ local function lua_init()
 	
 		local keychar= (keycode >=0x20 and keycode <0x80 and string.char(keycode) ) or ""
 		--  如果 第一字母為 pucnt  直接上屏
+		if not context:is_composing() and keychar:match("[%p ]") then return k.Rejected end  
 		-- non_ascii code  
 		-- commit processor   "[, ]"
 		--if context:is_composing() and okeychar:match([[^[, ]$]])  then
 		local function context_commit(ctx,char) 
 			local cand= ctx:get_selected_candidate()
-			ctx.input = (cand and cand.text ) or otx.input  -- 更新 context.input
-			ctx:push_input(char) 
+			ctx.input = (cand and cand.text ) or ctx.input  -- 更新 context.input
 			ctx:commit() 
-			ctx:clear()
-			return k.Accepted
+			--ctx:push_input(char) 
+			return k.Rejected
 		end 
 
-		if not context:is_composing() and keychar:match("%p") then return k.Rejected end  
+		--if keychar:match(",") then return k.Rejected end  
 
-		if  keychar:match([[^[ ]$]]) or dotcommit then context_commit(context,keychar) end 
+		if  keychar:match([[^[ ]$]]) and  context:is_composing()  then context_commit(context,keychar) end 
 		log.info("---processor in english_mode:" .. context.input ..    "  ascii(" .. keychar .. ")" ) 
 		-- ascii   a-z A-Z_?*.-  
 		if not  keychar:match([[^[%a%'?*_.-]$]]) then  return k.Noop end 
@@ -106,9 +106,11 @@ local function lua_init()
 				env.history_words= setmetatable({} , {__index=table } ) 
 			end )
 
+		log.info("-- processor --- ") 
 	end 
 	local function processor_fini_func(env)
 		env.connection:disconnect() 
+		log.info("-- ~processor--- ") 
 	end 
 
 
@@ -135,8 +137,10 @@ local function lua_init()
 	end 
 
 	local function segmentor_init_func(env)
+		log.info("-- segmentor--- ") 
 	end 
 	local function segmentor_fini_func(env)
+		log.info("-- ~segmentor--- ") 
 	end 
 	-- lua translator 
 	local function translator_func(input,seg,env)  -- input:string, seg:Segment, env_
@@ -161,8 +165,10 @@ local function lua_init()
 	end 
 
 	local function translator_init_func(env)
+		log.info("-- translator--- ") 
 	end 
 	local function translator_fini_func(env)
+		log.info("-- ~translator--- ") 
 	end 
 
 	-- lua filter
@@ -200,16 +206,34 @@ local function lua_init()
 					log.info( "---commit notifier :--" ..  context:get_commit_text() .. "--input:--" .. context.input .. "--"  )
 				end 
 			end )
+		log.info("-- filter --- ") 
 	end 
 	local function filter_fini_func(env)  -- non return 
 		env.connection:disconnect() 
+		log.info("-- ~filter --- ") 
 	end 
 
 
 
+	local function load()
+		english_processor= { func=processor_func, init=processor_init_func, fini=processor_fini_func}  
+		english_segmentor= { func= segmentor_func, init=segmentor_init_func , fini=segmentor_fini_func}  
+		english_translator={ func=translator_func, init=translator_init_func,fini=translator_fini_func}  
+		english_filter=    { func=filter_func, init=filter_init_func,    fini=filter_fini_func }    
 
+	end 
+	local function unload()
+		english_processor= { func=nil, init=nil, fini=nil}  
+		english_segmentor= { func=nil, init=nil, fini=nil}  
+		english_translator={ func=nil, init=nil, fini=nil}  
+		esglish_filter=    { func=nil, init=nil, fini=nil}    
+	end 
 
-
+    if argv  then 
+		unload()
+	else 
+		load()
+	end 
 	return { 
 		processor= { func=processor_func, init=processor_init_func, fini=processor_fini_func} , 
 		segmentor= { func= segmentor_func, init=segmentor_init_func , fini=segmentor_fini_func} , 

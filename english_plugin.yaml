@@ -7,9 +7,9 @@
 #    __include: english_plugin:/patch
 #------------------------------------------------
 patch:
-    engine/processors/@after 0: lua_processor@english_processor
-    engine/segmentors/@after 0: lua_segmentor@english_segmentor 
-    engine/translators/@after 0: lua_translator@english_translator
+    engine/processors/@before 0: lua_processor@english_processor
+    engine/segmentors/@before 0: lua_segmentor@english_segmentor 
+    engine/translators/@before 0: lua_translator@english_translator
     engine/filters/@next : lua_filter@english_filter
     switches/@after 1: { name: "english" , states: [ "中打", "英打" ] } 
 
