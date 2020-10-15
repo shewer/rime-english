@@ -34,64 +34,101 @@ local function lua_init()
 		local keycode=key.keycode 
 
 		
+		if not  english_mode(env)  then return k.Noop end  
 		if (key:ctrl() or key:alt() or key:release() ) then return k.Noop end 
 
-		if not  english_mode(env)  then return k.Noop end  
-		--log.info("---processor in  normorl )" ) 
-		--log.info("---processor in inclish_mode   )" ) 
-
 		-- complate context.text  -- 
-		if  key:repr() == "Tab" then 
+		local keyrepr=key:repr()
+		log.info( "--processor in seg: (" .. tostring(context ) .. ")input: (" .. context.input  ..  ") keyrepr:(".. keyrepr ..")" )
+		if  keyrepr == "Tab" then 
 			local seg=composition:back()
-			local cand=seg:get_candidate_at( seg.selected_index +1 ) 
-			if cand  then  context.input= cand.text end  
+			log.info( "seg: (" .. tostring(context ) .. ")input: (" .. context.input  ..  ") keyrepr:(".. keyrepr ..")" )
+			local old_text=context.input 
+
+			local cand=seg:get_selected_candidate( )
+			---  complation  select cand
+			if cand  and seg.selected_index == 0 and cand.type == "pre_english" then  
+				local cand= seg:get_candidate_at(seg.selected_index +1 ) 
+				if cand then context.input = cand.text end 
+				--context:refresh_non_confirmed_composition()
+
+			elseif cand and  seg.selected_index >0 then 
+				context.input= cand.text
+				--context:refresh_non_confirmed_composition()
+			end 
+			env.history_words:insert(old_text)
 			return k.Accepted 
 		end 
 
+		log.info( "--process key:repr() :(" .. keyrepr .. ") history_words:" .. env.history_words:concat("|")  )  
+
+		if keyrepr == "Shift+Tab" or keyrepr == "Shift_L+Tab" or keyrepr == "Shift_R+Tab"  then 
+			local restore_text= env.history_words:remove()
+			log.info( "--process in shift-tab key:repr() :(" .. keyrepr .. ") restore_tetxt:(" .. tostring(restore_text)  .. ") history_words:" .. env.history_words:concat("|")  )  
+			if restore_text then 
+				context.input= restore_text
+				--context:refresh_non_confirmed_composition()
+			end 
+			return k.Accepted 
+		end 
+
+	
 		local keychar= (keycode >=0x20 and keycode <0x80 and string.char(keycode) ) or ""
+		--  如果 第一字母為 pucnt  直接上屏
 		-- non_ascii code  
 		-- commit processor   "[, ]"
-		if context:is_composing() and keychar:match([[^[, ]$]])  then
-
-			local cand= context:get_selected_candidate()
-			context.input = (cand and cand.text ) or context.input
-			context:push_input(keychar) 
-			context:commit() 
-			context:clear()
+		--if context:is_composing() and okeychar:match([[^[, ]$]])  then
+		local function context_commit(ctx,char) 
+			local cand= ctx:get_selected_candidate()
+			ctx.input = (cand and cand.text ) or otx.input  -- 更新 context.input
+			ctx:push_input(char) 
+			ctx:commit() 
+			ctx:clear()
 			return k.Accepted
 		end 
-		log.info("---processor in inclish_mode:" .. context.input ..    "  ascii(" .. keychar .. ")" ) 
+
+		if not context:is_composing() and keychar:match("%p") then return k.Rejected end  
+
+		if  keychar:match([[^[ ]$]]) or dotcommit then context_commit(context,keychar) end 
+		log.info("---processor in english_mode:" .. context.input ..    "  ascii(" .. keychar .. ")" ) 
 		-- ascii   a-z A-Z_?*.-  
-		if not  keychar:match([[^[a-zA-Z_?*.-]$]]) then  return k.Noop end 
+		if not  keychar:match([[^[%a%'?*_.-]$]]) then  return k.Noop end 
 		context:push_input(keychar)
-		log.info("---processor after in inclish_mode:" .. context.input ..    "  ascii(" .. keychar .. ")" ) 
+		log.info("---processor after in english_mode:" .. context.input ..    "  ascii(" .. keychar .. ")" ) 
 		return k.Accepted 
 	end  
 
 	local function processor_init_func(env)
+		env.history_words= setmetatable({} , {__index=table } ) 
+		-- when  commit  clean 
+		env.connection= env.engine.context.commit_notifier:connect(
+			function(context)  
+				env.history_words= setmetatable({} , {__index=table } ) 
+			end )
+
 	end 
 	local function processor_fini_func(env)
+		env.connection:disconnect() 
 	end 
 
 
 	-- lua segmentor
 	local function segmentor_func(segs ,env) -- segmetation:Segmentation,env_
 		local context=env.engine.context
-		if english_mode(env) and context:is_composing() then 
-			log.info("--segment  context_input:" .. context.input .. "  segs_input:" .. segs.input .. " preedit:" .. context:get_preedit().text )
-			if segs.empty() then 
-				local seg=Segment(0,segs.input:len())
-				seg.tags=  Set({'english'})
-				seg.prompt="(english)"
-				segs:add_segment(seg) 
-				
-			else 
-				local seg=segs:back()
-				seg:reopen(input:len()) 
-				seg.prompt="(english)"
-				seg.tags=  Set({'english'})
+		local cartpos= segs:get_current_start_position()
 
-			end 
+
+		
+		if english_mode(env) and context:is_composing() then 
+			local str = segs.input:sub(cartpos) 
+			if not  str:match([[^%a[%a'?*_.-]*]]) then  return true  end 
+		    local str= segs.input:sub(segs:get_current_start_position() )
+			log.info("--segment  context_input: (" .. context.input .. ")  segs_input: (" .. segs.input .. ") preedit:" .. context:get_preedit().text )
+			local seg=Segment(cartpos,segs.input:len())
+			seg.tags=  Set({'english'})
+			seg.prompt="(english)"
+			segs:add_segment(seg) 
+				
 			return false 
 		end 
 		return true
@@ -111,7 +148,7 @@ local function lua_init()
 			input:find_words( 
 			function(elm) 
 				log.info("--- in tran yield loop -elm:" .. elm )
-				if flag and context.input ~= elm then 
+				if flag and input ~= elm then 
 					yield( Candidate("pre_english", seg.start,seg._end , context.input , "[english]"))
 				end 
 				flag=false 
@@ -138,7 +175,7 @@ local function lua_init()
 			if cand.type== "english" then 
 				i=i+1
 				local commet=cand.text:word_info()
-				commet:split("\n"):each( function(elm) 
+				commet:split("\\n"):each( function(elm) 
 					log.info("-- in filter yield loop -cand: " .. cand.text .. ":" .. i .. ":" .. elm ) 
 					--cand:get_genuine().comment= i .." : "   ..  elm
 					local j= Candidate(cand.text,cand.start,cand._end,cand.text,i .. ":" .. elm) 
