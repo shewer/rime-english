@@ -1,3 +1,5 @@
 patch:
   style/horizontal: false
   menu/page_size: 6  
+  recognizer/patterns/email:
+

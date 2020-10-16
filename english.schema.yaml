@@ -129,5 +129,7 @@ punctuator:
 recognizer:
   import_preset: default
   patterns:
+      email: 
       #pinyin: "^P[a-z]*$"
       #english: "^A[a-zA-Z,_,]*$"
+

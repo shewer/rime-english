@@ -21,6 +21,7 @@ update:
 	#cp rime.lua $(Rime)
 	cp english.schema.yaml  $(Rime)
 	cp english.custom.yaml  $(Rime)
+	cp english_plugin.yaml  $(Rime)
 	rsync -vcru lua $(Rime)
 	#cp lua/comment*.lua $(Rime)/lua
 

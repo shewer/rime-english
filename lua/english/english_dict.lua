@@ -17,6 +17,7 @@ require 'english/english_init'
 local function wildfmt(str)  --    replace ?* to pattern    ? => [%a._]?   *=> [%a._]*   and  add  "$"
 		local change
 		str,change= str:gsub("([?*])","[%%a._]%1")
+		str,change= str:gsub("([._-])","%%%1")
 		if change > 0 then 
 			--str=   str .. "$"
 		end 
