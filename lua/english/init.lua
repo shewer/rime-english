@@ -24,47 +24,30 @@ local function english_mode(env)
 	return  _english_mode   and   not ascii_mode
 
 end 
-local function toggle_mode(ctx)
-	local english_ =ctx:get_option("english")
-	local ascii_ =ctx:get_option("ascii_mode")
-	if ascii_ then  -- ascii_mode to chinese
-		ctx:set_option("english", false )
-	    ctx:set_option("ascii_mode", false)
-    elseif not ascii_ and not english_ then  -- chinese to  english 
-		ctx:set_option("english", true)
-	elseif not ascii_ and  english_ then   -- english to ascii_mode
-		ctx:set_option("english", false )
-	    ctx:set_option("ascii_mode", true)
-	end 
-	--return 1 -- accepted
-
-end 
 
 local function lua_init()
 
 	local function processor_func(key,env) -- key:KeyEvent,env_
 		local k = {Rejected = 0, Accepted = 1, Noop = 2 }
+
+		if not  english_mode(env)  then return k.Noop end  
+		if ( key:alt() or key:release() ) then return k.Noop end 
+		--if (key:ctrl() or key:alt() or key:release() ) then return k.Noop end 
+
 		local context=env.engine.context 
 		local composition=context.composition
 		local keycode=key.keycode 
 		local is_composing=context:is_composing()
+		
 		local keyrepr=key:repr()
-		if  key:alt() or key:release()  then return k.Noop end 
-		--if keycode == 0xff30  and  key:ctrl() and  keyrepr == "Control+Control_L" then 
-		if  key:ctrl() and key:ctrl() and  keyrepr == "Control+Control_L" then  
-			log.info( "-- hotkey befor enable context.input=" ..context.input .. "keyrepr:(" .. keyrepr .. ")" )
-				toggle_mode(context) 
-				return k.Accepted
-		end 
-
-		if not  english_mode(env)  then return k.Noop end  
-		--if (key:ctrl() or key:alt() or key:release() ) then return k.Noop end 
-
+		local keyname={ ["Control+f"] ="*ful" , ["Control+y"]= "*ly" , ["Control+n"]= "*tion" , ["Control+a"] = "*able" ,
+					["Control+i"] = "*ing" , ["Control+m"]= "*ment"	, ["Control+r"]= "*er", 
+			}
 
 		log.info( "-- hotkey befor enable context.input=" ..context.input .. "keyrepr:(" .. keyrepr .. ")" )
-		if is_composing and env.hotkey[keyrepr] then
+		if is_composing and keyname[keyrepr] then
 			local old_text=context.input
-			context.input = old_text  .. env.hotkey[keyrepr] 
+			context.input = old_text  .. keyname[keyrepr] 
 			env.history_words:insert(old_text)
 			log.info( "-- hotkey enablecontext.input=" ..context.input .. "keyrepr:(" .. keyrepr .. ")" )
 			return k.Accepted 
@@ -122,9 +105,6 @@ local function lua_init()
 
 	local function processor_init_func(env)
 		env.history_words= setmetatable({} , {__index=table } ) 
-		env.hotkey= { ["Control+f"] ="*ful" , ["Control+y"]= "*ly" , ["Control+n"]= "*tion" , ["Control+a"] = "*able" ,
-					["Control+i"] = "*ing" , ["Control+m"]= "*ment"	, ["Control+r"]= "*er", 
-			}
 		-- when  commit  clean 
 		env.connection= env.engine.context.commit_notifier:connect(
 		function(context)  

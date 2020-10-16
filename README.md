@@ -11,25 +11,9 @@
 - 在輸入過程中可使用通配符查詞   ？單字母 * 多字母 ex: be*ful 
 - 符號或空格直接連候選詞一齊上屏，數字選字上屏 Tab complation function ex: be*ful Tab => beautiful
 - 中文輸入法使用"朙月拼音"，請自行更改
-- 增加 english_plugin.yaml   可於 schema_name.custom.yaml  patch 
-- 增加 熱鍵 補上 *ing *able *tion *ful ....   tab 補齊 Shift-tab 返迴上次 text
-- 
 
-## 安裝說明:
-- rime.lua 
-```lua 
-USERDIR= ( USERDIR or  os.getenv("APPDATA") or "" ) .. [[\Rime]]
 
-require("english") 
 
-```
-- schema_id.custom.yaml
-```yaml
-patch: 
-
-	__include: reverse_switch:/patch-
-
-```
 ## 詞典制作：
 - 詞典來源於[skywind3000 ECDICT](https://github.com/skywind3000/ECDICT)
 - 提供EXCEL文件<english.dict.xlsx>用於同步ECDICT及製作yaml詞典文件
