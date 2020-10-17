@@ -26,6 +26,11 @@ local function english_mode(env)
 	return  english_mode   and   not ascii_mode
 end 
 
+local function check_slach(input)
+	local w,p2=input:split(":"):unpack()
+	local w,p1=w:split("/"):unpack()
+	return w, p1,p2
+end 
 local function lua_init()
 
 	local function processor_func(key,env) -- key:KeyEvent,env_
@@ -54,7 +59,7 @@ local function lua_init()
 		--if context:is_composing() and  [,/. ] then
 		local function   commit_chk(char) 
 			if not is_composing  then return false end  
-			if char:match([[^[,/ ]$]]  ) then  return true
+			if char:match([[^[, ]$]]  ) then  return true
 			elseif  char == "."  and not context:has_menu() then return true
 			else return false end  
 		end 
@@ -67,7 +72,21 @@ local function lua_init()
 
 			local seg=context.composition:back()
 			if not seg then return  end 
+
+			--  if  input has  "/" ":"  
 			local backup_input=context.input 
+			local word,p1,p2= check_slach(backup_input) 
+		    local word= word ..  ( (env.keyname2[p1] and "*" .. env.keyname2[p1] ) or "" )
+			log.info( string.format("input: (%s) word:(%s) , p1:(%s) , p2(%s) ", backup_input, word,p1,p2) ) 
+			if  backup_input:match("/") then -- and backup_input ~= word  then 
+				context.input= word ..  ((p2 and ":" .. p2 ) or "")
+				env.history_words:insert(backup_input)
+				return 
+			end 
+
+
+			
+			
 			
 			-- 如果 cand 是第一個 且 type== "pre_english" 重取下一個 cand 補齊  
 			if context:has_menu() then 
@@ -123,6 +142,8 @@ local function lua_init()
 			log.info( "-- hotkey befor enable context.input=" ..context.input .. "keyrepr:(" .. keyrepr .. ")" )
 			--  
 			if hotkey_cmd( keyrepr) then return k.Accepted end 
+
+
 		else 
 			--  如果 第一字母為 pucnt  直接上屏
 			if  keychar:match("[%p ]") then return k.Rejected end  
@@ -144,7 +165,14 @@ local function lua_init()
 		env.k = {Rejected = 0, Accepted = 1, Noop = 2 }
 		env.keyname={ ["Control+f"] ="*ful" , ["Control+y"]= "*ly" , ["Control+n"]= "*tion" , ["Control+a"] = "*able" ,
 		["Control+i"] = "*ing" , ["Control+m"]= "*ment"	, ["Control+r"]= "*er", 
-	}
+		}
+		env.keyname2={ f ="*ful" , y= "*ly" , n= "*tion" , a = "*able" ,
+		i = "ing" , m= "*ment"	, r= "*er", 
+		}
+		env.keyname3={ 
+				"a", "abbr", "ad", "art", "aux", "phr", "pl", "pp", "prep", "pron", "conj", "int", "v", "vi", "vt"   
+			}
+	   
 	env.history_words= setmetatable({} , {__index=table } ) 
 	-- when  commit  clean 
 	env.connection= env.engine.context.commit_notifier:connect(
@@ -187,16 +215,26 @@ end
 -- lua translator 
 local function translator_func(input,seg,env)  -- input:string, seg:Segment, env_
 	local context=env.engine.context
-
+	
 	if english_mode(env) and seg:has_tag(english_)  then 
+    --local word=input		
+	local word,p1,p2= check_slach(input) 
+
+	--w2= env.keyname2[p1] or ""
+	word = word ..  (( env.keyname2[p1] and "*" .. env.keyname2[p1] ) or "" )
+
+
+
 		local flag=true 
-		input:find_words( 
+		word:find_words( 
 		function(elm) 
 			if flag and input ~= elm then 
-				yield( Candidate(pre_english_, seg.start,seg._end , context.input , "[english]"))
+				--yield( Candidate(pre_english_, seg.start,seg._end , context.input , "[english]"))
+				yield( Candidate(pre_english_, seg.start,seg._end , word , "[english]"))
 			end 
 			flag=false 
-			yield( Candidate(english_, seg.start,seg._end, elm, "[english]") )
+			--yield( Candidate(english_, seg.start,seg._end, elm, "[english]") )
+			yield( Candidate(english_, seg.start,seg._end, elm, p2 or "" ))
 		end 
 		)
 
@@ -204,6 +242,12 @@ local function translator_func(input,seg,env)  -- input:string, seg:Segment, env
 end 
 
 local function translator_init_func(env)
+		env.keyname2={ f ="ful" , y= "ly" , n= "tion" , a = "able" ,
+		i = "ing" , m= "ment"	, r= "er", 
+		}
+		env.keyname3={ 
+				"a", "abbr", "ad", "art", "aux", "phr", "pl", "pp", "prep", "pron", "conj", "int", "v", "vi", "vt"   
+			}
 end 
 local function translator_fini_func(env)
 end 
@@ -216,12 +260,23 @@ local function filter_func(input,env)  -- input:Tranlation , env_
 	for cand in  input:iter() do 
 
 		if cand.type== english_ then 
+			
 			i=i+1
-			local commet=cand.text:word_info()
-			commet:split("\\n"):each( function(elm) 
+			local comment=cand.text:word_info()
+			comment:split("\\n"):each( function(elm) 
 				--cand:get_genuine().comment= i .." : "   ..  elm
-				local j= Candidate(cand.text,cand.start,cand._end,cand.text,i .. ":" .. elm) 
-				yield(j) 
+				if cand.comment == ""  then 
+						local j= Candidate(cand.text,cand.start,cand._end,cand.text,i .. ":" .. elm) 
+						yield(j) 
+				else 
+					local vv= env.keyname3:find_all(function(elm)  return elm:match("^" .. cand.comment ) end)
+					vv:each( function(elm1)  
+						if elm:match( " ".. elm1 .. ".")  then 
+							local j= Candidate(cand.text,cand.start,cand._end,cand.text,i .. ":" .. elm) 
+							yield(j) 
+						end 
+					end )
+				end 
 			end )
 
 			--cand:get_genuine().comment= i .." : "   ..  cand.text:word_info()    
@@ -234,6 +289,9 @@ local function filter_func(input,env)  -- input:Tranlation , env_
 end 
 
 local function filter_init_func(env) -- non return 
+		env.keyname3=setmetatable({ 
+				"a", "abbr", "ad", "art", "aux", "phr", "pl", "pp", "prep", "pron", "conj", "int", "v", "vi", "vt"   
+			},{__index=table})
 	--env.connection= env.engine.context.commit_notifier:connect(
 	--function(context)  local cand=env.cand
 	--if english_mode(env) then 
