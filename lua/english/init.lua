@@ -76,10 +76,14 @@ local function lua_init()
 			--  if  input has  "/" ":"  
 			local backup_input=context.input 
 			local word,p1,p2= check_slach(backup_input) 
-		    local word= word ..  ( (env.keyname2[p1] and "*" .. env.keyname2[p1] ) or "" )
+			--local word= word ..  ( (env.keyname2[p1] and "*" .. env.keyname2[p1] ) or "" )
 			log.info( string.format("input: (%s) word:(%s) , p1:(%s) , p2(%s) ", backup_input, word,p1,p2) ) 
 			if  backup_input:match("/") then -- and backup_input ~= word  then 
-				context.input= word ..  ((p2 and ":" .. p2 ) or "")
+				--context.input= word ..  ((p2 and ":" .. p2 ) or "")
+			--local word= word ..  ( (env.keyname2[p1] and "*" .. env.keyname2[p1] ) or "" )
+				 word= word ..  ( (env.keyname2[p1] and "*" .. env.keyname2[p1] ) or "" ) 
+				 word= word .. ((p2 and ":" .. p2 ) or "")
+				 context.input= word
 				env.history_words:insert(backup_input)
 				return 
 			end 
@@ -111,14 +115,23 @@ local function lua_init()
 			context.input = context.input  .. wildword_ 
 			log.info( "-- hotkey enablecontext.input=" ..context.input .. "keyrepr:(" .. hotkey .. ")" )
 		end 
+		local function hot_keyword1(hotkey) 
+			local wildword_ = (env.keyname2[hotkey] and "*" ..  env.keyname2[hotkey] ) or "" 
+			env.history_words:insert(context.input)
+			context.input = context.input  .. wildword_ 
+			log.info( "-- hotkey enablecontext.input=" ..context.input .. "keyrepr:(" .. hotkey .. ")wildword".. wildword )
+		end 
 		local function hotkey_cmd(hotkey)
-			if  hotkey == "Tab" then  complate_text() 
-			elseif  hotkey == "Shift+Tab" or hotkey== "Shift_L+Tab" or hotkey== "Shift_R+Tab"  then restort_word() 
-			elseif  env.keyname[hotkey] then  hot_keyword(hotkey) 
-			else 
-				return  false
+			if  hotkey == "Tab" then  complate_text() ; return true end 
+			if  hotkey == "Shift+Tab" or hotkey== "Shift_L+Tab" or hotkey== "Shift_R+Tab"  then 
+				restort_word() 
+		        return true 
 			end 
-			return true
+			local hotkey_char= hotkey:match("^Control%+(%w)$") 
+			log.info( "-- hotkey enablecontext:hotkey_char  (" .. tostring(hotkey_char) .. ") matchword:(" .. tostring(env.keyname2[hotkey_char])  .. ")")
+			--elseif  env.keyname[hotkey] then  hot_keyword(hotkey) 
+			if  env.keyname2[hotkey_char] then  hot_keyword1(hotkey_char) return true  end 
+			return false 
 		end 
 		--  toggle mode    ascii - chinese  -- english -- ascii 
 		if key:repr() == toggle_key then  toggle_mode(context)   ; return k.Accepted  end 
@@ -166,8 +179,11 @@ local function lua_init()
 		env.keyname={ ["Control+f"] ="*ful" , ["Control+y"]= "*ly" , ["Control+n"]= "*tion" , ["Control+a"] = "*able" ,
 		["Control+i"] = "*ing" , ["Control+m"]= "*ment"	, ["Control+r"]= "*er", 
 		}
-		env.keyname2={ f ="*ful" , y= "*ly" , n= "*tion" , a = "*able" ,
-		i = "ing" , m= "*ment"	, r= "*er", 
+		--env.keyname2={ f ="*ful" , y= "*ly" , n= "*tion" , a = "*able" ,
+		--i = "ing" , m= "*ment"	, r= "*er", 
+		--}
+		env.keyname2={ f ="ful" , y= "ly" , n= "tion" , a = "able" ,
+		i = "ing" , m= "ment"	, r= "er", g="ght" ,  l="less" ,  
 		}
 		env.keyname3={ 
 				"a", "abbr", "ad", "art", "aux", "phr", "pl", "pp", "prep", "pron", "conj", "int", "v", "vi", "vt"   
@@ -243,7 +259,7 @@ end
 
 local function translator_init_func(env)
 		env.keyname2={ f ="ful" , y= "ly" , n= "tion" , a = "able" ,
-		i = "ing" , m= "ment"	, r= "er", 
+		i = "ing" , m= "ment"	, r= "er", g="ght" ,  l="less" ,  
 		}
 		env.keyname3={ 
 				"a", "abbr", "ad", "art", "aux", "phr", "pl", "pp", "prep", "pron", "conj", "int", "v", "vi", "vt"   
@@ -270,12 +286,11 @@ local function filter_func(input,env)  -- input:Tranlation , env_
 						yield(j) 
 				else 
 					local vv= env.keyname3:find_all(function(elm)  return elm:match("^" .. cand.comment ) end)
-					vv:each( function(elm1)  
-						if elm:match( " ".. elm1 .. ".")  then 
+					local result=vv:find( function(elm1) return  elm:match( " " .. elm1 .."%.") end )  
+					if result then 
 							local j= Candidate(cand.text,cand.start,cand._end,cand.text,i .. ":" .. elm) 
 							yield(j) 
-						end 
-					end )
+					end 
 				end 
 			end )
 
@@ -290,7 +305,8 @@ end
 
 local function filter_init_func(env) -- non return 
 		env.keyname3=setmetatable({ 
-				"a", "abbr", "ad", "art", "aux", "phr", "pl", "pp", "prep", "pron", "conj", "int", "v", "vi", "vt"   
+				"a", "abbr", "ad","adv", "art", "aux", "n", "phr", "pl", "pp", "prep", 
+				"pron", "conj", "int", "v", "vi", "vt"   
 			},{__index=table})
 	--env.connection= env.engine.context.commit_notifier:connect(
 	--function(context)  local cand=env.cand
