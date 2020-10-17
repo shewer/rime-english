@@ -13,6 +13,10 @@
 - 中文輸入法使用"朙月拼音"，請自行更改
 - 增加 english_plugin.yaml   可於 schema_name.custom.yaml  patch 
 - 增加 熱鍵 補上 *ing *able *tion *ful *tion  ....  (見init.lua env.hotkey table)  Tab 補齊 Shift-Tab 返迴上次 text 
+- 增加 怏鍵 補上 *ing *able .....   ( ex auto/n --> auto*tion ) 
+- 增加 詞類 篩選  :v :a :n    ( ex auto:a -- auto*| filter  n. )
+- 
+  
 
 ## 安裝說明.
 - rime.lua  
