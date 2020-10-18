@@ -12,4 +12,5 @@ patch:
     engine/translators/@before 0: lua_translator@english_translator
     engine/filters/@next : lua_filter@english_filter
     switches/@after 1: { name: "english" , states: [ "中打", "英打" ] } 
+    switches/@last: { name: "fold_comments" , states: [ 展開, 疊起 ] } 
 
