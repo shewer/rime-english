@@ -57,7 +57,7 @@ table.find_all=function(tab,elm,...)
 	local tmptab=setmetatable({} , {__index=table} )
 	local _func=  (type(elm) == "function" and elm ) or  function(v,k, ... ) return  v == elm  end
 	for k,v in pairs(tab) do
-		if _func(v,k,...) then
+		if _func(v,...) then
 			tmptab:insert(v)
 		end
 	end

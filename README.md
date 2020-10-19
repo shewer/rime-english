@@ -12,10 +12,11 @@
 - 符號或空格直接連候選詞一齊上屏，數字選字上屏 Tab complation function ex: be*ful Tab => beautiful
 - 中文輸入法使用"朙月拼音"，請自行更改
 - 增加 english_plugin.yaml   可於 schema_name.custom.yaml  patch 
-- 增加 熱鍵 補上 *ing *able *tion *ful *tion  ....  (見init.lua env.hotkey table)  Tab 補齊 Shift-Tab 返迴上次 text 
+- 增加 熱鍵 補上 *ing *able *tion *ful *tion  ....  (可在 english_dict.lua 增加 字根 )  Tab 補齊 Shift-Tab 返迴上次 text 
 - 增加 怏鍵 補上 *ing *able .....   ( ex auto/n --> auto*tion ) 
-- 增加 詞類 篩選  :v :a :n    ( ex auto:a -- auto*| filter  n. )
-- 
+- 增加 詞類 篩選  :v :a :n :adv(ad*) pre* pro* :pl :v :vt :vi   ( ex auto:a -- auto*| filter  n. )
+- 熱鍵  F10 三態 切換 ascii_mode  chinese  english ， F9 展開開關  （可以在 init.lua 修改 熱鍵 ）
+
   
 
 ## 安裝說明.
