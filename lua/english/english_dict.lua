@@ -54,9 +54,9 @@ local function parts_find(str)
 end
 local function wildfmt(str)  --    replace ?* to pattern    ? => [%a._]?   *=> [%a._]*   and  add  "$"
 	local w,p1,p2,p3= check_slash(str)
-	local wild_word= (w .. parts_find(p1) .. parts_find(p2)):lower()
+	local wild_word= (w .. parts_find(p1) .. parts_find(p2))
 
-	local pattern_word, change= wild_word:gsub("([?*])","[%%a._]%1")
+	local pattern_word, change= wild_word:lower():gsub("([?*])","[%%a._]%1")
 	pattern_word, change= pattern_word:gsub("([._-])","%%%1")
 	pattern_word = "^" .. pattern_word 
 	if change > 0 then 
@@ -121,7 +121,6 @@ end
 
 local function dict_match_call(tab,str , func)
 	tab=tab[str:sub(1,1):lower()]  or setmetatable({} , {__index=table} ) 
-
 	str=wildfmt(str)
 	tab:each( func)
 end 	      
@@ -147,7 +146,7 @@ local function init(filename)
 			end )
 		else
 
-			local parts=eng_parts:find_all( function(elm) return elm:match("^" .. part ) end )
+			local parts=eng_parts:find_all( function(elm,str) return elm:match("^" .. str ) end,part )
 			tab_:each( function(info_elm) 
 				local match_f= parts:find( function(elm) info_elm:match("%s" .. elm .. "%.") end )  
 				if match_f then func(info_elm,str)  end 
@@ -158,12 +157,77 @@ local function init(filename)
 		return info
 
 	end 
+	local function _iter_match_func(tab, str, func ) 
+		local iter,tab,index = ipairs(tab)
+		return function()
+			for i,v in iter ,tab, index do
+				index = i  -- keep index for next start from index+1 
+				if  v:lower():match( str ) then 
+					return func(v) 
+				end 
+			end 
+			return nil 
+		end 
+	end 
+	local function keep_cand(comment,part)
+		if not part  or part=="" then  return ture end 
+		local parts=eng_parts:find_all( function(elm,str) return elm:match("^" .. str ) end,part )
+		local result=parts:find(function(elm,str) return str:match( "%s" .. elm .. "%." ) end , part)  
+		return result
+	end 
+		
+	local function _iter_match(str, func ) -- pattern_sttr 
+		local tab= dict_index[str:sub(1,1)]  or setmetatable({},{__index=table})
+		local pattern_str, wild_str, part = wildfmt(str) 
+		print( "local tab:" , tab , "size:" , #tab) 
+		print("wildfmt return: ",pattern_str, wild_str,part)
+		return _iter_match_func(tab,pattern_str,func)
+	end 
+
+	local function part_match(info, part)
+		part= part or ""
+		if #part > 0 then 
+			return info:match( "%s" ..  part:lower() .. "%.%s" ) 
+		end 
+		return true
+	end 
+
+	local function iter_dict_match(str,split)   -- "Ab/i:a"
+		local pattern_str, wild_str, part = wildfmt(str) 
+		local tab = dict_index[ str:sub(1,1):lower() ] or setmetatable({},{__index=table})
+
+		return coroutine.wrap( function() 
+			for i,word  in ipairs(tab) do 
+				if  word:lower():match( pattern_str ) then 
+					
+					local info= dict_info[word] or ""
+					if split then 
+						info:split("\\n"):each( function( info) 
+							if part_match(info, part) then  coroutine.yield(word,info) end 
+						end )
+
+						--for i,sub_info in ipairs( info:split("\\n") ) do 
+							--if part_match(sub_info, part) then 	coroutine.yield(word,sub_info) end 
+						--end 
+					else 
+						if part_match(info, part) then  coroutine.yield(word,info) end 
+					end 
+				end 
+			end 
+			return nil 
+		end )
+			
+	end 
+
+
+
 	local function unload()
 		package.loaded["english_dict"]=nil 
 	end 
-	local dict={words=words,info=info, part_word=parts_find , wildfmt=wildfmt }
+	local dict={words=words,info=info, part_word=parts_find , wildfmt=wildfmt ,iter_match1=iter_match1,iter_match=iter_match,iter_match_=iter_match_, check_slash=check_slash ,keep_cand=keep_cand,iter_dict_match=iter_dict_match}
 
-	return dict,unload
+	--return dict,unload 
+	return dict,unload ,dict_index,dict_info 
 end 
 return init
 
