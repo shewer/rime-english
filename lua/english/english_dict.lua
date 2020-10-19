@@ -19,11 +19,12 @@ USERDIR= ( USERDIR or  os.getenv("APPDATA") or "" ) .. [[\Rime]]
 
 -- 字典 字根 查碼 table
 --  
-local eng_suffixe1={ ["Control+f"] ="*ful" , ["Control+y"]= "*ly" , ["Control+n"]= "*tion" , ["Control+a"] = "*able" ,
-["Control+i"] = "*ing" , ["Control+m"]= "*ment"	, ["Control+r"]= "*er", }
+--local eng_suffixe1={ ["Control+f"] ="*ful" , ["Control+y"]= "*ly" , ["Control+n"]= "*tion" , ["Control+a"] = "*able" ,
+--["Control+i"] = "*ing" , ["Control+m"]= "*ment"	, ["Control+r"]= "*er", }
 --env.keyname2={ f ="*ful" , y= "*ly" , n= "*tion" , a = "*able" ,
 --i = "ing" , m= "*ment"	, r= "*er", 
 --}
+--   f="ful"  --> /f or   Control+f  
 local eng_suffix={ f ="ful" , y= "ly" , n= "tion" , a = "able" ,
 i = "ing" , m= "ment"	, r= "er", g="ght" ,  l="less" ,  }
 local eng_suffix_list={ }
