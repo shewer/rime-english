@@ -1,0 +1,3 @@
+[submodule "librime-lua-tools"]
+	path = librime-lua-tools
+	url = https://github.com/shewer/librime-lua-tools
