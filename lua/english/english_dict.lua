@@ -10,12 +10,12 @@
 -- rime log  redefine 
 if not log then 
 	log={}
-end 
-if not log.info  then 
 	log.info= function(str) print(str) end 
+
 end 
 
-USERDIR= ( USERDIR or  os.getenv("APPDATA") or "" ) .. [[\Rime]]
+print( "---filename :" , string.gsub(debug.getinfo(1).source, "^@(.+/)[^/]+$", "%1english.txt") )
+--USERDIR= ( USERDIR or  os.getenv("APPDATA") or "" ) .. [[\Rime]]
 
 -- 字典 字根 查碼 table
 --  
@@ -25,6 +25,12 @@ USERDIR= ( USERDIR or  os.getenv("APPDATA") or "" ) .. [[\Rime]]
 --i = "ing" , m= "*ment"	, r= "*er", 
 --}
 --   f="ful"  --> /f or   Control+f  
+require 'tools/object'
+
+
+
+
+
 local eng_suffix={ f ="ful" , y= "ly" , n= "tion" , a = "able" ,
 i = "ing" , m= "ment"	, r= "er", g="ght" ,  l="less" ,  }
 local eng_suffix_list={ }
@@ -35,28 +41,28 @@ setmetatable(eng_parts,{__index=table } )
 
 
 
-require 'english/english_init'
+--require 'english/english_init'
+local function parts_find(str)
+	local part= eng_suffix[str] 
+    return  "*" .. ( part  or str )
+
+end
+-- split    word/p1/p2:p3   ex: a*/tion:n    action:n  
 local function check_slash(input)
 	local w,p1,p2,p3
 	w,p3=input:split(":"):unpack()
 	w,p1,p2=w:split("/"):unpack()
 	w= w or ""
-	p1=p1 or ""
-	p2=p2 or ""
-	p3=p3 or ""
+	p1= "*" .. ( eng_suffix[p1] or p1 or  "" ) 
+	p2= "*" .. ( eng_suffix[p2] or p2 or  "" ) 
+	p3 = p3 or ""
+	p3 = p3=="" and  p3  or  ( " " .. p3 .. "[%w]*%.%s")  
 	return w, p1,p2,p3
 end 
-local function parts_find(str)
-	local part= eng_suffix[str] 
-	if part then 
-		return  "*" .. part 
-	end 
-	return ""
-end
 local function wildfmt(str)  --    replace ?* to pattern    ? => [%a._]?   *=> [%a._]*   and  add  "$"
 	local w,p1,p2,p3= check_slash(str)
-	local wild_word= (w .. parts_find(p1) .. parts_find(p2))
-
+	local wild_word= (w .. p1 .. p2)
+	-- replase  ?*    
 	local pattern_word, change= wild_word:lower():gsub("([?*])","[%%a._]%1")
 	pattern_word, change= pattern_word:gsub("([._-])","%%%1")
 	pattern_word = "^" .. pattern_word 
@@ -68,64 +74,46 @@ end
 
 -- when  commit  clean 
 --- 取消  match()     inline to  dict_match() 
-local function match( str )
-	str= wildfmt(str) 
-	return function(elm)
-		return   elm:lower():match( "^" .. str ) 
-	end 
-end 
 
 local function init_dict(filename ) 
+	local function split_info(info_str)
+		local info={phonics="",info=""}
+		local  head,tail=  info_str:find('^%[[^%s]*]') 
+		if head and tail then 
+			info.phonics= info_str:sub(head,tail)
+			info.info= info_str:sub(tail+1)
+		end 
+		return info
+	end 
 
-	filename= filename or  ( USERDIR .. "\\" .. [[\lua\english\english.txt]]) 
 
-
-	local dict_file=  io.open( filename)
-	log.info("english.txt : " .. filename ) 
-	log.info("open dict_file :  " .. tostring(dict_file)  ) 
-	--local dict_file= io.open( ( USERDIR .. "/" .. filename) )
-	local dict_index=setmetatable({},{__index=table})
+	--local dict_file= io.open( ( SERDIR .. "/" .. filename) )
 	local dict_info=setmetatable({},{__index=table})
+	-- create  a-z dict_tab  { a= dict_a , b=dict_b ..... ,z=dict_z}
+	local dict_index=setmetatable({},{__index=table})
 	for i=0x61,0x7a do  -- a-z 
 		dict_index[string.char(i)] = setmetatable({},{__index=table})
 	end
-	for line in dict_file:lines() do 
-		if not line:match("^#") then 
-			local word,info = line:split("\t"):unpack()
-			dict_info[word]=info
-			dict_index[word:sub(1,1):lower() ]:insert(word)
-			--dict_index:insert(word)
+
+	filename =  filename or string.gsub(debug.getinfo(1).source, "^@(.+/)[^/]+$", "%1english.txt") 
+	local dict_file=  io.open( filename)
+	if not dict_file then 
+		log.info("=English module open file not found: " .. filename)
+	else 
+		log.info( ( "=English module load english.txt : %s (%s)"):format(  filename,dict_file )) 
+		-- init dict_index and dict_info
+		for line in dict_file:lines() do 
+			if not line:match("^#") then 
+				local word,pre_info = line:split("\t"):unpack()
+				dict_info[word]= split_info(pre_info) 
+				dict_index[word:sub(1,1):lower() ]:insert(word)
+				--dict_index:insert(word)
+			end 
 		end 
 	end 
 	return dict_index,dict_info
 
 end 
-
-local function dict_match(tab, str,func)
-	tab=tab[str:sub(1,1):lower()]  or setmetatable({} , {__index=table} ) 
-	if #tab==0  then 
-		log.info( string.format( "tabsize=0 :string = (%s), sub=(%s) ", str , str:sub(1,1) ))
-	end 
-	--if str:len() == 1 or #tab == 0 then  --   pass find_all function 
-		--tab:each ( function(elm)  func(elm,"") end  )
-	--else
-		--tab = tab:find_all(match( str) )
-		local patternstr,wildstr, part=wildfmt(str) 
-		tab = tab:find_all( function(elm) 
-			local match_str= elm:lower():match( patternstr ) 
-			if type(func) == "function"  and match_str  then func( elm, part) end 
-			return  match_str 
-		end )
-	--end 
-	return tab  or setmetatable( {} , {__index=table })
-end 
-
-local function dict_match_call(tab,str , func)
-	tab=tab[str:sub(1,1):lower()]  or setmetatable({} , {__index=table} ) 
-	str=wildfmt(str)
-	tab:each( func)
-end 	      
-
 
 local function init(filename)
 
@@ -230,5 +218,79 @@ local function init(filename)
 	--return dict,unload 
 	return dict,unload ,dict_index,dict_info 
 end 
-return init
+
+
+
+local English= Class("English")
+function English:_initialize(filename)
+	self._dict_index, self._dict_info = self.Parse(filename)
+	self._mode=0
+	return self
+end 
+
+function English.Parse(filename) -- return table ,table
+	return init_dict(filname)
+end 
+function English:mode(mode)
+	if  ( mode and tonumber( mode ) ) then 
+		if mode >= 0 and  mode <= 3 then self._mode= mode  end
+	end 
+	return self._mode
+end 
+
+function English:info(word,mode) -- return string  , string
+	local info= self._dict_info[word]
+	if not info then return  "" end 
+	mode= mode or self:mode() 
+	if mode == 1 then 
+	    return info.phonics .. info.info, word
+	else 
+		return info.info ,word
+	end 
+end 
+
+function English:iter(s_word,mode)
+	local function _check_dict(word,pattern,part)
+		return word:lower():match(pattern) and self:info(word):match(part) 
+	end 
+	return coroutine.wrap( function() 
+		local words=self._dict_index[s_word:sub(1,1):lower()]  or setmetatable({} , {__index=table} ) 
+		--local info=self._dict_info
+		if not words then 
+			log.info( string.format( "tabsize=0 :string = (%s), sub=(%s) ", s_word , s_word:sub(1,1) ))
+			return 
+		end 
+		local patternstr,wildstr, part=wildfmt(s_word) 
+
+		for i,word in ipairs(words) do 
+			if  _check_dict(word,patternstr,part ) then 
+					coroutine.yield({word= word, info=self:info(word,mode)})
+			end 
+		end 
+	end )
+end 
+
+function English:dict_match(word,func)   -- iter yield { word= , info= ...} 
+	local tab_result=setmetatable({} , {__index=table} ) 
+	func= func or function(elm)  return elm end 
+	for elm  in  self:iter(word) do
+		tab_result:insert( func(elm) )
+	end 
+	return tab_result
+end 
+English.Wildfmt= wildfmt    -- alias Wildfmt = wildfmt
+
+
+
+
+
+
+
+
+
+
+return English
+
+
+--return init
 

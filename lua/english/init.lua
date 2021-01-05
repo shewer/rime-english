@@ -8,7 +8,9 @@
 
 -- windows  path setup 
 
-USERDIR= ( USERDIR or  os.getenv("APPDATA") or "" ) .. [[\Rime]]
+--USERDIR= ( USERDIR or  os.getenv("APPDATA") or "" ) .. [[\Rime]]
+USERDIR= rime_api.user_dir()
+
 local English= "english"
 local Ascii_mode = "ascii_mode"
 local Pre_english = "pre_english" 
@@ -18,12 +20,12 @@ local Toggle_key= "F10"
 --require "english/english_init"
 --string.find_word,string.word_info= require("english/english_dict")() 
 
-require('english.english_init')
+--require('english.english_init')
 -- init  dictionary  function to string table 
-local dict= require('english.english_dict')() -- (USERDIR .. "\\" .. [[lua\english\english.txt]] )
-string.find_words,string.word_info,string.iter_match= dict.words,dict.info,dict.iter_match
-string.wildfmt=dict.wildfmt
-string.wildfmt=dict.iter_dict_match
+--local dict= require('english.english_dict')() -- (USERDIR .. "\\" .. [[lua\english\english.txt]] )
+--string.find_words,string.word_info,string.iter_match= dict.words,dict.info,dict.iter_match
+--string.wildfmt=dict.wildfmt
+--string.wildfmt=dict.iter_dict_match
 -- chcek mode   
 local function english_mode(env)
 	local ascii_mode= env.engine.context:get_option(Ascii_mode)
@@ -50,7 +52,7 @@ end
 --if context:is_composing() and  [,/. ] then
 local function  commit_chk(char,env) 
 	local context=env.engine.context
-	
+
 	if not context:is_composing()  then return false end  
 	if char:match([[^[, ]$]]  ) then  return true
 	elseif  char == "."  and not context:has_menu() then return true
@@ -67,7 +69,7 @@ local function complate_text(env)
 	local context=env.engine.context
 	local seg=context.composition:back()
 	log.info( string.format( "--complate start has_menu:%s  menu_count: %s, select_index: %s", 
-		context:has_menu(), seg.menu:candidate_count() ,seg.selected_index ) ) 
+	context:has_menu(), seg.menu:candidate_count() ,seg.selected_index ) ) 
 	if not seg then return  end 
 
 	-- 在 intput 字串 有 "/"  補齊 wildfmt 如 auto/i  --> auto*ing  
@@ -77,7 +79,7 @@ local function complate_text(env)
 
 		part = ( part == ""  and  "" ) or  ":"  .. part
 		log.info( string.format( "--complate   / :%s  menu_count: %s, select_index: %s", 
-			context:has_menu(), seg.menu:candidate_count() ,seg.selected_index ) ) 
+		context:has_menu(), seg.menu:candidate_count() ,seg.selected_index ) ) 
 		context.input= word .. part
 		return 
 	end 
@@ -91,7 +93,7 @@ local function complate_text(env)
 		end 
 		env.history_words:insert( context.input )
 		log.info( string.format( "--complate has_menu  hasmenu :%s  menu_count: %s, select_index: %s", 
-			context:has_menu(), seg.menu:candidate_count() ,seg.selected_index ) ) 
+		context:has_menu(), seg.menu:candidate_count() ,seg.selected_index ) ) 
 		context.input= cand.text
 	end 
 end 
@@ -107,7 +109,7 @@ local function hot_keyword1(hotkey,env)
 end 
 local function hotkey_cmd(hotkey,env)
 	local context= env.engine.context
-	
+
 	--  Tab    intput 補齊
 	if  hotkey == "Tab" then  complate_text(env) ; return true end 
 	-- 返迴 上一次 補齊的 context:input 
@@ -115,7 +117,7 @@ local function hotkey_cmd(hotkey,env)
 		restort_word(env) 
 		return true 
 	end 
-    --  字根補齊熱鍵 
+	--  字根補齊熱鍵 
 	local hotkey_char= hotkey:match("^Control%+(%w)$") 
 	local part_word= dict.part_word(  hotkey_char or "" ) 
 	if part_word ~= "" then  context.input= context.input .. part_word ;  return true end 
@@ -125,7 +127,7 @@ local function hotkey_cmd(hotkey,env)
 end 
 
 local function lua_init()
-
+	local dict= require("english/english_dict"):New() 
 	local function processor_func(key,env) -- key:KeyEvent,env_
 		local Rejected, Accepted, Noop = 0,1,2 
 		local context=env.engine.context 
@@ -180,7 +182,7 @@ local function lua_init()
 		function(context)  
 			env.history_words= setmetatable({} , {__index=table } ) 
 		end )
-			----LINE   --- function 引用 dict 需要再檢查 
+		----LINE   --- function 引用 dict 需要再檢查 
 	end 
 	local function processor_fini_func(env)
 
@@ -226,8 +228,8 @@ local function lua_init()
 		if english_mode(env) and seg:has_tag(English)  then 
 			-- 為模擬 英文模式 將input 設第一個候選字 空白鍵 原碼+空白 上屏
 			yield( Candidate(Pre_english , seg.start,seg._end , input  , "[english]"))
-			for word,info in dict.iter_dict_match(input,fold_status) do 
-				yield( Candidate(English, seg.start,seg._end , word, info ))
+			for word_info in dict:iter(input) do 
+				yield( Candidate(English, seg.start,seg._end , word_info.word, word_info.info ))
 			end 
 		end 
 	end 
@@ -245,13 +247,30 @@ local function lua_init()
 
 		for cand in  input:iter() do 
 
-			if cand.type== English then  yield(cand)		
+			if cand.type== English then  
+				for word_info in env.info_iter(cand.comment,context.input) do
+					yaild( Candidate( cand.type,cand.text,cand.start,cand._end,word_info.info) )
+				end 
 			elseif cand.type == Pre_english then yield(cand)   -- pass 
 			else yield(cand) end  -- pass 
 		end 
 	end 
 
 	local function filter_init_func(env) -- non return 
+		env.info_mode=1
+		env.info_iter= function (word_info,text)
+			local  info_mode= env.engine.context:get_option(Fold_sw) 
+			local  patternstr,wildstr,part= dict.Wildfmt(text) -- class method 
+			local  tab=env.info_mode and word_info.info:split("\n") or {word_info.info:gsub("\n"," ") } 
+			return coroutine.wrap(function()
+				tab:each(function(elm) 
+					if elm:match(part) then 
+						coroutine.yield({word=word_info.word,info=elm}) 
+					end 
+				end )
+			end)
+
+		end 
 		--env.connection= env.engine.context.commit_notifier:connect(
 		--function(context)  local cand=env.cand
 		--if english_mode(env) then 
@@ -259,6 +278,8 @@ local function lua_init()
 		--end )
 	end 
 	local function filter_fini_func(env)  -- non return 
+		env.info_mode=nil
+		env.info_iter=nil
 		--env.connection:disconnect() 
 	end 
 
@@ -270,19 +291,20 @@ local function lua_init()
 	}
 
 end 
-	-- init  lua component  to global variable
-	local function init(tagname, unload_)
-		local tab_= lua_init() 
-		for k,v in pairs( tab_) do 
-			local kk= tagname .. "_" .. k 
-			_G[kk] =  ( not unload_ and  v ) or nil  --  load and v    or  nil 
-		end 
-
-
+-- init  lua component  to global variable
+--[[
+local function init(tagname, unload_)
+	local tab_= lua_init() 
+	for k,v in pairs( tab_) do 
+		local kk= tagname .. "_" .. k 
+		_G[kk] =  ( not unload_ and  v ) or nil  --  load and v    or  nil 
 	end 
 
 
-	return init
+end 
+--]]
+
+return lua_init
 
 
 

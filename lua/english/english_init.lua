@@ -5,6 +5,7 @@
 --
 -- Distributed under terms of the MIT license.
 --
+--[[
 OS="win"
 
 if OS=="win" then  
@@ -14,7 +15,7 @@ else
 	USERDIR=os.getenv("APPDATA") or ""
 	USERDIR= USERDIR .. "/Rime"
 end 
-
+--]]
 
 --USERDIR= USERDIR .. "\\Rime"
 
