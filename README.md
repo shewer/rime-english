@@ -17,7 +17,11 @@
 - 增加 熱鍵 補上 *ing *able *tion *ful *tion  ....  (可在 english_dict.lua 增加 字根 )  Tab 補齊 Shift-Tab 返迴上次 text 
 - 增加 怏鍵 補上 *ing *able .....   ( ex auto/n --> auto*tion ) 
 - 增加 詞類 篩選  :v :a :n :adv(ad*) pre* pro* :pl :v :vt :vi   ( ex auto:a -- auto*| filter  n. )
-- 熱鍵  F10 三態 切換 ascii_mode  chinese  english ， F9 展開開關  （可以在 init.lua 修改 熱鍵 ）
+- 熱鍵修改  lua/english/init.lua  
+- 字根是由 table key 定義 可在 lua/english/english_dict.lua  增修
+- bug:  windows rime : 字典 comment 字串太長，會關閉APP ，可在 english.txt or english_tw.txt 查找中斷點 ，
+把長字串   用# remark 
+
 
   
 
