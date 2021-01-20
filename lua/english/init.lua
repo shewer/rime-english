@@ -9,14 +9,20 @@
 -- windows  path setup 
 
 --USERDIR= ( USERDIR or  os.getenv("APPDATA") or "" ) .. [[\Rime]]
-USERDIR= rime_api.user_dir()
+--USERDIR= rime_api.user_dir()
 
 local English= "english"
+local Toggle_key= "F10"
 local Ascii_mode = "ascii_mode"
 local Pre_english = "pre_english" 
 local Fold_sw = "fold_comments"
 local Toggle_fold_key= "F9" 
-local Toggle_key= "F10"
+local English_complete="english_complete"
+local English_complete_key="F8"
+local English_mode="english_sw"
+local English_mode_key="Control+F9"
+
+
 --require "english/english_init"
 --string.find_word,string.word_info= require("english/english_dict")() 
 
@@ -27,168 +33,213 @@ local Toggle_key= "F10"
 --string.wildfmt=dict.wildfmt
 --string.wildfmt=dict.iter_dict_match
 -- chcek mode   
+
+-- 檢查 英打模式 
 local function english_mode(env)
 	local ascii_mode= env.engine.context:get_option(Ascii_mode)
 	local english_mode= env.engine.context:get_option(English )
-	return  english_mode   and   not ascii_mode
+	--return  english_mode   and   not ascii_mode
+	return  english_mode   and  not ascii_mode
 end 
-local function toggle_mode(env)
+-- 切換 option  true/false
+local function toggle_mode(env,name)
 	local context=env.engine.context
-	local eng_mode=context:get_option(English )
-	local ascii_mode=context:get_option(Ascii_mode)
-	if ascii_mode then  -- ascii_mode  to  chinese 
-		context:set_option(English , false)
-		context:set_option(Ascii_mode,false)
-	elseif not ascii_mode  and not eng_mode then  -- chinese mode to  english
-		context:set_option(English ,true )
-		--context:set_option(ascii_mode,false)
-	elseif not ascii_mode and eng_mode then  --  english to ascii_mode
-		context:set_option(English , false)
-		context:set_option(Ascii_mode,true)
-	else
-	end 
-end 
+	local name_status=context:get_option(name)
+	context:set_option(name , not name_status)
+end 	
 
 --if context:is_composing() and  [,/. ] then
-local function  commit_chk(char,env) 
+local function  commit_chk(env,char) 
 	local context=env.engine.context
 
-	if not context:is_composing()  then return false end  
+	--if not context:is_composing()  then return false end  
 	if char:match([[^[, ]$]]  ) then  return true
 	elseif  char == "."  and not context:has_menu() then return true
 	else return false end  
 end 
-function commit_input(env)
+--  可以使用 key_bind   { when:has_menu , accept: Control+Return , action: commit_comment 
+local function commit_comment(env)
 	local context=env.engine.context
 	local cand= context:get_selected_candidate()
-	context.input = (cand and cand.text ) or context.input  -- 更新 context.input
-	context:commit() 
+	env.engine:commit_text(cand.comment) 
+	context:clear()
 end 
-
+-- tab鍵  補齊功能
 local function complate_text(env) 
 	local context=env.engine.context
 	local seg=context.composition:back()
-	log.info( string.format( "--complate start has_menu:%s  menu_count: %s, select_index: %s", 
-	context:has_menu(), seg.menu:candidate_count() ,seg.selected_index ) ) 
+	local dict=env.dict
 	if not seg then return  end 
 
 	-- 在 intput 字串 有 "/"  補齊 wildfmt 如 auto/i  --> auto*ing  
 	if  context.input:match("/") then -- and backup_input ~= word  then 
-		local _ , word , part= dict.wildfmt(context.input)
-		env.history_words:insert(context.input)
 
-		part = ( part == ""  and  "" ) or  ":"  .. part
-		log.info( string.format( "--complate   / :%s  menu_count: %s, select_index: %s", 
-		context:has_menu(), seg.menu:candidate_count() ,seg.selected_index ) ) 
-		context.input= word .. part
+		env.history_words:push(context.input)
+		local _ , word , part= dict.Wildfmt(context.input)
+		context.input =    word   ..  ( context.input:match(":.*")  or ""  )
 		return 
 	end 
 
 	-- 如果有 menu 以讀取 目前 select cand 補齊 input 
 	if context:has_menu() then 
-		local cand=seg:get_selected_candidate( )
-		-- 如果 cand 是第一個 且 type== "pre_english" 重取下一個 cand 補齊  
-		if  seg.selected_index == 0 and cand.type == Pre_english and seg.menu:candidate_count() >=1  then  
-			cand= seg:get_candidate_at(seg.selected_index +1 ) 
+		if false then 
+			local cand=seg:get_selected_candidate()
+			-- 如果 cand 是第一個 且 type== "pre_english" 重取下一個 cand 補齊  
+			if  seg.selected_index == 0 and cand.type == Pre_english and seg.menu:candidate_count() >1  then  
+				cand= seg:get_candidate_at(seg.selected_index +1 ) 
+			end 
+			env.history_words:push( context.input )
+			context.input= cand.text
+		else
+
+
+			local cand= seg:get_selected_candidate()
+			if seg.selected_index ==0 then 
+				cand=  seg:get_candidate_at(1)  or cand
+			else 
+			end 
+			if  context.input ~= cand.text then 
+				env.history_words:push( context.input )
+				context.input= cand.text 
+			end 
 		end 
-		env.history_words:insert( context.input )
-		log.info( string.format( "--complate has_menu  hasmenu :%s  menu_count: %s, select_index: %s", 
-		context:has_menu(), seg.menu:candidate_count() ,seg.selected_index ) ) 
-		context.input= cand.text
 	end 
 end 
-local function restort_word(env) 
+-- Shift-Tab 補齊返回上一層
+local function restore_word(env) 
 	local context=env.engine.context
-	context.input=  env.history_words:remove()  or context.input 
+	context.input=  env.history_words:pop()  or context.input 
 end 
-local function hot_keyword1(hotkey,env) 
-	local context=env.engine.context
-	local wildword_ = (env.keyname2[hotkey] and "*" ..  env.keyname2[hotkey] ) or "" 
-	env.history_words:insert(context.input)
-	context.input = context.input  .. wildword_ 
-end 
-local function hotkey_cmd(hotkey,env)
+
+
+local function menu_hotkey_cmd(env, hotkey)
 	local context= env.engine.context
+	log.error( "function call :in menu hotkey cmd ")
 
 	--  Tab    intput 補齊
 	if  hotkey == "Tab" then  complate_text(env) ; return true end 
 	-- 返迴 上一次 補齊的 context:input 
 	if  hotkey == "Shift+Tab" or hotkey== "Shift_L+Tab" or hotkey== "Shift_R+Tab"  then 
-		restort_word(env) 
+		--restore_word(env) 
+		context.input= env.history_words:pop() or context.input 
 		return true 
 	end 
-	--  字根補齊熱鍵 
-	local hotkey_char= hotkey:match("^Control%+(%w)$") 
-	local part_word= dict.part_word(  hotkey_char or "" ) 
-	if part_word ~= "" then  context.input= context.input .. part_word ;  return true end 
+	return false 
+end 
+local function always_hotkey_cmd(env, hotkey)
+	local context= env.engine.context
+
+	-- 字典 展開 收縮  開關
+	if hotkey ==  Toggle_fold_key then toggle_mode(env,Fold_sw ) ; return true end 
+
+	--  字根補齊熱鍵  drr  English_complete enable  
+	--if hotkey == English_complete_key then toggle_mode(env,English_complete) ;return true end 
+
+	--  字根補齊熱鍵   English_complete enable  
+	if hotkey == English_mode_key then 
+		context:set_property(English_mode,"next")
+		return true 
+	end 
+	if context:get_option(English_complete) then 
+		--  
+		--local hotkey_char= hotkey:match("^Control%+(%w)$") 
+		--local part_word= env.dict.Eng_suffix(  hotkey_char or "" ) 
+		--if part_word  then  context.input= context.input .. part_word ;  return true end 
+	end 
 
 
 	return false 
 end 
+local function status(ctx)
+	local stat=metatable()
+	local comp= ctx.composition
+	stat.always=true
+	stat.composing= ctx:is_composing()
+	stat.empty= not stat.composing 
+	stat.has_menu= ctx:has_menu()
+	stat.paging= not comp.empty() and comp:back():has_tag("paging") 
+	return stat
+end 
 
-local function lua_init()
-	local dict= require("english/english_dict"):New() 
+local function lua_init(filename)
+	local dict= require("english/english_dict"):New(filename) 
 	local function processor_func(key,env) -- key:KeyEvent,env_
 		local Rejected, Accepted, Noop = 0,1,2 
+
 		local context=env.engine.context 
 		local composition=context.composition
-		local is_composing=context:is_composing()
-
-		-- 任何模式下
-		--  toggle mode    ascii - chinese  -- english -- ascii 
-		if key:repr() == Toggle_key then  toggle_mode(env)   ; return Accepted  end 
-		if key:repr() == Toggle_fold_key  then 
-			context:set_option( Fold_sw , not context:get_option(Fold_sw) )
-			return Accepted 
-		end 
-		--  english_mode 模式下
-		--if (key:ctrl() or key:alt() or key:release() ) then return k.Noop end 
-		if not  english_mode(env)  then return Noop end  
-		-- english mode  pass  alt release 
-		if ( key:alt() or key:release() ) then return Noop end 
-
+		local status= status(context) 
 		local keycode=key.keycode 
 		local keyrepr=key:repr()
-		local keychar= (keycode >=0x20 and keycode <0x80 and string.char(keycode) ) or ""
+		local keychar= (key.modifier <=1 and keycode >=0x20 and keycode <0x80 and string.char(keycode) ) or ""
+		--if ( alt() or key:release() ) then return Noop end 
+		if ( key:release() ) then return Noop end 
+		if keyrepr == Toggle_key then  toggle_mode(env,English)   ; return Accepted  end 
 
-		-- context.input 有資料時 , 需要處理的keyevent
-		if is_composing then 
-			-- commit_char check 
-			--  return true 表示 熱鍵接收
-			if  commit_chk(keychar, env) then commit_input(env) return Rejected end  --  
-			--  hotkey check  and update context.input 
-			--  Tab ,Shift+Tab ctrl+a~z ( 補齊功能 返迴上一佪input 字根補齊）
-			--  return true 表示 熱鍵接收
-			if hotkey_cmd( keyrepr,env) then return Accepted end 
-		else 
-			--  在 not is_composing 時如果 第一字母為 pucnt  直接上屏
+		if not english_mode(env)  then  return Noop end 
+
+		if status.empty then 
+			--  在 not is_composing 時如果 第一字母為 pucnt  
 			if  keychar:match("[%p ]") then return Rejected end  
+			if  keyrepr == "Tab" then return Rejected end 
+
+
 		end 
-		--  在 english_mode 下 一般輸入模式
-		-- ascii   a-z A-Z_?*.-  
-		if  keychar:match([[^[%a%:/'?*_.-]$]]) then  
-			context:push_input(keychar)
-			return Accepted
+		-- in english mode 
+		if status.always then 
+			-- 任何模式下
+			--  toggle mode    ascii - chinese  -- english -- ascii 
+
+			if always_hotkey_cmd(env,keyrepr) then return Accepted end 
+			--  
+			--  正常模式 
+			if  keychar:match([[^[%a%:/'?*_.%-]$]]) then  
+				context:push_input(keychar)
+				return Accepted
+			end 
+		end 
+		if status.has_menu then 
+			if keychar:match("[, ]") then context:commit() ; return Rejected end
+			if keyrepr== "Return"  then context:commit() ; return Rejected end
+			if keyrepr=="Control+Return" then commit_comment(env) ; return Accepted   end 
+
+		end 
+
+		if status.composing then
+			if keychar:match("[,%. ]")  then context:commit()  return Rejected end
+			if keyrepr== "Return"  then context:commit() ; return Rejected end
+			--if  commit_chk(env,keychar) then context:commit() return Rejected end  --  
+			if menu_hotkey_cmd(env,keyrepr) then return Accepted end 
+		end 
+
+
+		if status.paging then 
+
 		else 
-			return Noop  
+			return Noop
+
 		end 
+
 		return Noop  
 	end  
 
 	local function processor_init_func(env)
+		env.dict=dict 
 		env.history_words= setmetatable({} , {__index=table } ) 
 		-- 註冊 commit_notifier 上屏後  清空 history_words 
 		env.connection= env.engine.context.commit_notifier:connect(
 		function(context)  
-			env.history_words= setmetatable({} , {__index=table } ) 
+			for i=0, #env.history_words	do env.history_words[i]=nil end 
+			--env.history_words= setmetatable({} , {__index=table } ) 
 		end )
 		----LINE   --- function 引用 dict 需要再檢查 
 	end 
+
 	local function processor_fini_func(env)
-
-
 		-- 移除註冊 commit_notifier 上屏後  清空 history_words 
 		env.keyname=nil 
+		env.history_words=nil 
+		env.dict=nil
 		env.connection:disconnect() 
 	end 
 
@@ -220,23 +271,54 @@ local function lua_init()
 	local function segmentor_fini_func(env)
 	end 
 	-- lua translator 
-	local function translator_func(input,seg,env)  -- input:string, seg:Segment, env_
 
+
+	local function translator_func(input,seg,env)  -- input:string, seg:Segment, env_
 		local context=env.engine.context
 		local fold_status=context:get_option( Fold_sw ) 
 		--在  模式  和 tag 為 english 才 翻譯
 		if english_mode(env) and seg:has_tag(English)  then 
 			-- 為模擬 英文模式 將input 設第一個候選字 空白鍵 原碼+空白 上屏
-			yield( Candidate(Pre_english , seg.start,seg._end , input  , "[english]"))
-			for word_info in dict:iter(input) do 
-				yield( Candidate(English, seg.start,seg._end , word_info.word, word_info.info ))
+			local pre_english_check = true  
+
+			for word_info in env.dict:iter(input:lower())  do 
+				-- 第一個 canddidate text ~= input  則要送上 pre_english 
+				if pre_english_check then 
+					pre_english_check=false
+					if  input ~= word_info.word then 
+						yield( Candidate(Pre_english , seg.start,seg._end , input  , "[english]"))
+					end 
+				end 
+				yield( Candidate(English, seg.start,seg._end , word_info.word, word_info.info  ))
 			end 
 		end 
 	end 
 
 	local function translator_init_func(env)
+		env.dict=dict 
+		local context= env.engine.context
+
+		env.connection_property=context.property_update_notifier:connect(
+		function(context,name)  
+			-- Control+F9  送字串上  property  切換 comment 顯示模式   ,清除 command 井將狀態寫入 info_mode 
+			-- 供 filter取用
+			local value= context:get_property(name)   
+			if name == English_mode and value== "next" then 
+				local mode=env.dict:next_mode()
+				context:set_property(name,"") 
+				context:set_property("info_mode",mode ) 
+
+				context:refresh_non_confirmed_composition()
+			end 
+		end )
+		----LINE   --- function 引用 dict 需要再檢查 
 	end 
 	local function translator_fini_func(env)
+		env.dict=nil
+		if env.connection_property then 
+			env.connection_property:disconnect() 
+			env.property_connection= nil
+		end 
 	end 
 
 	-- lua filter
@@ -244,42 +326,56 @@ local function lua_init()
 	--  cand data to string 
 	local function filter_func(input,env)  -- input:Tranlation , env_
 		local context=env.engine.context
+		local mode= context:get_property("info_mode")
 
 		for cand in  input:iter() do 
 
 			if cand.type== English then  
-				for word_info in env.info_iter(cand.comment,context.input) do
-					yaild( Candidate( cand.type,cand.text,cand.start,cand._end,word_info.info) )
+				local  fold_sw =  context:get_option(Fold_sw) 
+
+				local comment= env.dict:get_info(cand.text):get_info(mode)
+
+				if fold_sw then 
+					--  分割 "\\n"  加 candidate
+					comment:split("\\n"):each( function(elm)
+						yield( Candidate( cand.type,cand.start,cand._end,cand.text,elm) )
+					end )
+				else 
+					-- 不分割 去掉 ”\\n" 
+					cand.comment= comment:gsub("\\n"," ")
+					yield(cand) 
 				end 
+
 			elseif cand.type == Pre_english then yield(cand)   -- pass 
 			else yield(cand) end  -- pass 
 		end 
 	end 
 
 	local function filter_init_func(env) -- non return 
-		env.info_mode=1
-		env.info_iter= function (word_info,text)
-			local  info_mode= env.engine.context:get_option(Fold_sw) 
-			local  patternstr,wildstr,part= dict.Wildfmt(text) -- class method 
-			local  tab=env.info_mode and word_info.info:split("\n") or {word_info.info:gsub("\n"," ") } 
-			return coroutine.wrap(function()
-				tab:each(function(elm) 
-					if elm:match(part) then 
-						coroutine.yield({word=word_info.word,info=elm}) 
-					end 
-				end )
-			end)
+		local context=env.engine.context
+		env.dict=dict 
+		local function ntf (ctx) 
+			local st= status(ctx)
+			local seg=ctx.composition:back()
+			if st.has_menu then 
+				local cand=seg:get_selected_candidate()
+				local index=seg.selected_index 
+				local count= seg.menu:candidate_count() 
+				cand= seg:get_candidate_at(seg.selected_index +1 )   
+				if cand then 
+					index=seg.selected_index 
+					count= seg.menu:candidate_count() 
+				else 
+				end 
+			end 
 
 		end 
-		--env.connection= env.engine.context.commit_notifier:connect(
-		--function(context)  local cand=env.cand
-		--if english_mode(env) then 
-		--end 
-		--end )
+
+		env.update_notifier_connection= context.update_notifier:connect(ntf)
+		env.select_notifier_connection= context.select_notifier:connect(ntf)
 	end 
 	local function filter_fini_func(env)  -- non return 
-		env.info_mode=nil
-		env.info_iter=nil
+		env.dict=nil
 		--env.connection:disconnect() 
 	end 
 
@@ -294,11 +390,11 @@ end
 -- init  lua component  to global variable
 --[[
 local function init(tagname, unload_)
-	local tab_= lua_init() 
-	for k,v in pairs( tab_) do 
-		local kk= tagname .. "_" .. k 
-		_G[kk] =  ( not unload_ and  v ) or nil  --  load and v    or  nil 
-	end 
+local tab_= lua_init() 
+for k,v in pairs( tab_) do 
+local kk= tagname .. "_" .. k 
+_G[kk] =  ( not unload_ and  v ) or nil  --  load and v    or  nil 
+end 
 
 
 end 
