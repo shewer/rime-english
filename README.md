@@ -43,7 +43,6 @@
   --    module args   'english_tw.txt'   字典檔    word\t[音標]; 翻譯  ......   \t
   load_module.load('english','english',"english_tw.txt") --  module , target_name , dict_file
   
-  load_module= require('english','english','english_tw.txt')
   
   
   ```
