@@ -6,7 +6,9 @@
 
 ## 功能說明：
 
-- 在中文模式下增加 english 開關模式
+- 在中文模式下增加 english 開關模式  {F10}
+- 長字典 展開 開關 - {F9}
+- comment 顯示模式 - {Control+F9}    音標  翻譯  關閉 
 - 支持大小寫混合輸入，候選單詞自動匹配。輸入模式儘量符合 英打模式 
 - 在輸入過程中可使用通配符查詞   ？單字母 * 多字母 ex: be*ful 
 - 符號或空格直接連候選詞一齊上屏，數字選字上屏 Tab complation function ex: be*ful Tab => beautiful
@@ -20,10 +22,25 @@
   
 
 ## 安裝說明.
-- rime.lua  
+- git clone --recursive https://github.com/shewer/rime-english
+- cp  lua/english  $Rime/USERDATA/lua/english
+- cp  lua/tools    $Rime/USERDATA/lua/tools
+- cp  lua/english/english_plugin.yaml  $Rime/USERDATA
+- 
+- edit rime.lua  
   ```lua 
-  USERDIR= ( USERDIR or  os.getenv("APPDATA") or "" ) .. [[\Rime]]
-  require("english")("english")
+  --  載入 function 
+  --  將  { processor= { fini, init , func} ,translator={fini,init,func} .....}  載入全域
+  load_module=require('tools/loadmodule')
+  --  --load_module.load( 'module' , lua_component name, args ....)
+  --    require 'lua/english/init.lua   ,
+  --    lua_processor@english_processor ,  lua_segmentor@english_segmentor .....
+  
+  --    module args   'english_tw.txt'   字典檔    word\t[音標]; 翻譯  ......   \t
+  load_module.load('english','english',"english_tw.txt") --  module , target_name , dict_file
+  
+  load_module= require('english','english','english_tw.txt')
+  
   
   ```
 - custom.yaml
