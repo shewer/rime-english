@@ -26,7 +26,8 @@
   
 
 ## 安裝說明.
-- git clone --recursive https://github.com/shewer/rime-english
+- git clone https://github.com/shewer/librime-lua-tools $USERDATA/lua/tools
+- git clone https://github.com/shewer/rime-english    $USERDATA/lua/english
 - cp  lua/english  $Rime/USERDATA/lua/english
 - cp  lua/tools    $Rime/USERDATA/lua/tools
 - cp  lua/english/english_plugin.yaml  $Rime/USERDATA
