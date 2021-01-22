@@ -258,12 +258,20 @@ end
 
 local English= Class("English")
 function English:_initialize(filename,level)
+	self._filename= filename or "english_tw.txt"
 	self._level= level or 3
 	self._mode=0
-	self._dict_index, self._dict_info ,self._dict_tree = self.Parse(filename,level)
-	
+	self:_load(filename,level)
 	return self
 end 
+function English:_load(filename,level)
+	print("load dictfile",self._filename)
+	self._dict_index, self._dict_info ,self._dict_tree = self.Parse(filename,level)
+end
+function English:reload()
+	self:_load(self._filename,self._level)
+end 
+	
 
 function English.Parse(filename,level) -- return table ,table
 	return init_dict(filename,level)

@@ -1,9 +1,9 @@
 #code	text
 a	[ei]; 第一個字母 A; 一個; 第一的\r\n art. [計] 累加器, 加法器, 地址, 振幅, 模擬, 區域, 面積, 彙編, 組件, 異步
 A-road	['ei'rәjd]; <英>A級公路,主車道
-a.m.	上午, 午前
-AA	[ɔ:]; [計] 絕對地址, 農業自動化, 自動應答\n [醫] 各, 各個
-AAA	[醫]; 急性焦慮發作
+#a.m.	上午, 午前
+#AA	[ɔ:]; [計] 絕對地址, 農業自動化, 自動應答\n [醫] 各, 各個
+#AAA	[醫]; 急性焦慮發作
 aaah	abbr. American Association for the Advancement of the Humanities 美國人權促進會
 Aachen	['ɑ:kәn]; 亞琛[德意志聯邦共和國西部城市]
 aah	[ɑ:]; abbr.[軍] Armored Artillery Howitzer, 裝甲榴彈炮\n abbr.[軍] Advanced Attack Helicopter, 先進攻擊直升機

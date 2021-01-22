@@ -22,6 +22,8 @@ local English_complete_key="F8"
 local English_mode="english_sw"
 local English_mode_key="Control+F9"
 
+local Reflash_Dict="reflash_dict"
+local Reflash_Dict_key="Control+F12"
 
 --require "english/english_init"
 --string.find_word,string.word_info= require("english/english_dict")() 
@@ -162,6 +164,7 @@ local function status(ctx)
 end 
 
 local function lua_init(filename)
+	local Notifier= require('tools/notifier') 
 	local dict= require("english/english_dict"):New(filename) 
 	local function processor_func(key,env) -- key:KeyEvent,env_
 		local Rejected, Accepted, Noop = 0,1,2 
@@ -182,6 +185,7 @@ local function lua_init(filename)
 			--  在 not is_composing 時如果 第一字母為 pucnt  
 			if  keychar:match("[%p ]") then return Rejected end  
 			if  keyrepr == "Tab" then return Rejected end 
+			if  keyrepr == Reflash_Dict_key then env.dict:reload() ;return Accepted end 
 
 
 		end 
@@ -227,11 +231,17 @@ local function lua_init(filename)
 		env.dict=dict 
 		env.history_words= setmetatable({} , {__index=table } ) 
 		-- 註冊 commit_notifier 上屏後  清空 history_words 
-		env.connection= env.engine.context.commit_notifier:connect(
-		function(context)  
+		--env.connection= env.engine.context.commit_notifier:connect(
+		--function(context)  
+			--for i=0, #env.history_words	do env.history_words[i]=nil end 
+			----env.history_words= setmetatable({} , {__index=table } ) 
+		--end )
+		local function clear_history(ctx)
 			for i=0, #env.history_words	do env.history_words[i]=nil end 
-			--env.history_words= setmetatable({} , {__index=table } ) 
-		end )
+		end 
+		env.notifier= Notifier(env)
+		local t=env.notifier:commit(clear_history) 
+		print("---t commit notifiter call functoin: ", t,"connect" , connection ) 
 		----LINE   --- function 引用 dict 需要再檢查 
 	end 
 
@@ -240,7 +250,7 @@ local function lua_init(filename)
 		env.keyname=nil 
 		env.history_words=nil 
 		env.dict=nil
-		env.connection:disconnect() 
+		env.notifier:disconnect()
 	end 
 
 
