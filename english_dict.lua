@@ -362,9 +362,17 @@ function English:iter(org_text,mode)
 	--local pw,ww,p=conv_pattern1(org_text,self._level) 
 	local pw,ww,p=conv_pattern(org_text) 
 	local index= self:pre_suffix( key )  
-	local info_tab= self._dict_info
-
 	if not index then return function() end  end 
+	local info_tab= self._dict_info
+	if org_text:match("^[a-yA-Y]$") then 
+		local endi= self:pre_suffix( string.char( key:byte() +1 ) ) -1
+		return coroutine.wrap(function()
+			for i=index , endi do
+				coroutine.yield(self._dict_index[i] )
+			end
+		end )
+	end 
+
 	index= (index >2 and index-1) or nil
 	return coroutine.wrap( 
 	function()
