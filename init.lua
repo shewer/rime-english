@@ -159,7 +159,7 @@ local function status(ctx)
 	stat.composing= ctx:is_composing()
 	stat.empty= not stat.composing 
 	stat.has_menu= ctx:has_menu()
-	stat.paging= not comp.empty() and comp:back():has_tag("paging") 
+	stat.paging= not comp:empty() and comp:back():has_tag("paging") 
 	return stat
 end 
 
@@ -198,6 +198,7 @@ local function lua_init(filename)
 			--  
 			--  正常模式 
 			if  keychar:match([[^[%a%:/'?*_.%-]$]]) then  
+				
 				context:push_input(keychar)
 				return Accepted
 			end 
@@ -211,7 +212,7 @@ local function lua_init(filename)
 
 		if status.composing then
 			if keychar:match("[,%. ]")  then context:commit()  return Rejected end
-			if keyrepr== "Return"  then context:commit() ; return Rejected end
+			if keyrepr== "Return"  then ; context:commit() ; return Rejected end
 			--if  commit_chk(env,keychar) then context:commit() return Rejected end  --  
 			if menu_hotkey_cmd(env,keyrepr) then return Accepted end 
 		end 
@@ -233,15 +234,14 @@ local function lua_init(filename)
 		-- 註冊 commit_notifier 上屏後  清空 history_words 
 		--env.connection= env.engine.context.commit_notifier:connect(
 		--function(context)  
-			--for i=0, #env.history_words	do env.history_words[i]=nil end 
-			----env.history_words= setmetatable({} , {__index=table } ) 
+		--for i=0, #env.history_words	do env.history_words[i]=nil end 
+		----env.history_words= setmetatable({} , {__index=table } ) 
 		--end )
 		local function clear_history(ctx)
 			for i=0, #env.history_words	do env.history_words[i]=nil end 
 		end 
 		env.notifier= Notifier(env)
 		local t=env.notifier:commit(clear_history) 
-		print("---t commit notifiter call functoin: ", t,"connect" , connection ) 
 		----LINE   --- function 引用 dict 需要再檢查 
 	end 
 
